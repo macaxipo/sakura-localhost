@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>熊本 難読地名クイズ</title>
+  <style>
+    html { font-size: 16px; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background-color: #eef3f7; /* Light blue-grey background */
+      color: #333;
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    .container {
+      background-color: #fff;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 500px; /* Max width for content area */
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.8rem;
+      color: #004a7c; /* Darker blue for title */
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+    }
+    #question {
+      font-size: 2.8rem; /* Larger question font */
+      font-weight: bold;
+      color: #1d3557; /* Even darker blue for emphasis */
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background-color: #f0f8ff; /* Alice blue background for question */
+      border-radius: 8px;
+      min-height: 80px; /* Ensure space for text */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #answer {
+      display: none;
+      font-size: 2.2rem; /* Large answer font */
+      color: #d9534f; /* Bootstrap danger red for answer */
+      margin-top: 1.5rem;
+      margin-bottom: 1.5rem;
+      font-weight: 500;
+    }
+    #map {
+      display: none;
+      width: 100%;
+      height: 250px; /* Fixed height or aspect ratio based height */
+      margin-top: 1.5rem;
+      border-radius: 8px;
+      overflow: hidden; /* Ensures iframe respects border-radius */
+      border: 1px solid #ddd;
+    }
+    .button-container {
+      margin-top: 1.5rem;
+      display: flex;
+      flex-direction: column; /* Stack buttons on small screens */
+      gap: 0.8rem; /* Space between buttons */
+    }
+    button {
+      padding: 0.8rem 1.5rem;
+      font-size: 1.1rem; /* Readable button text */
+      font-weight: 500;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+      width: 100%; /* Full width buttons */
+    }
+    #answer-btn {
+      background-color: #007bff; /* Primary blue */
+      color: white;
+    }
+    #answer-btn:disabled {
+      background-color: #b0c4de; /* Lighter blue when disabled */
+      cursor: not-allowed;
+    }
+    #answer-btn:hover:not(:disabled) {
+      background-color: #0056b3;
+      transform: translateY(-1px);
+    }
+    #next-btn {
+      background-color: #28a745; /* Success green */
+      color: white;
+    }
+    #next-btn:hover {
+      background-color: #1e7e34;
+      transform: translateY(-1px);
+    }
+    #loading-message, #error-message {
+        font-size: 1.2rem;
+        color: #555;
+        margin-top: 2rem;
+    }
+
+    @media (min-width: 481px) { /* For wider screens, buttons side-by-side */
+        .button-container {
+            flex-direction: row;
+            justify-content: center;
+        }
+        button {
+            width: auto; /* Auto width for larger screens */
+            min-width: 150px;
+        }
+    }
+    @media (max-width: 360px) { /* Smaller phones */
+        #question { font-size: 2.2rem; }
+        #answer { font-size: 1.8rem; }
+        h1 { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>熊本 難読地名クイズ</h1>
+    <div id="question">読み込み中…</div>
+    <div id="answer"></div>
+    <div class="button-container">
+      <button id="answer-btn" disabled>答えを見る</button>
+      <button id="next-btn" style="display:none;">次の問題</button>
+    </div>
+    <div id="map"></div>
+  </div>
+
+  <script>
+    let places = [];
+    let current = 0;
+
+    const qEl = document.getElementById('question');
+    const aEl = document.getElementById('answer');
+    const mapEl = document.getElementById('map');
+    const ansBtn = document.getElementById('answer-btn');
+    const nextBtn = document.getElementById('next-btn');
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+    }
+
+    fetch('kumamoto_nandoku_chimei_clean.txt')
+      .then(res => {
+        if (!res.ok) throw new Error('テキスト読み込み失敗: ' + res.status);
+        return res.text();
+      })
+      .then(text => {
+        places = text.split(/\r?\n/).reduce((acc, line) => {
+          line = line.trim();
+          if (!line) return acc;
+          const parts = line.split(/\t/);
+          if (parts.length === 2 && parts[0] && parts[1]) { // Ensure both parts exist
+            acc.push({ name: parts[0], reading: parts[1] });
+          }
+          return acc;
+        }, []);
+
+        if (places.length === 0) throw new Error('地名データが空か、形式が正しくありません。');
+        shuffle(places);
+        showQuestion();
+        ansBtn.disabled = false;
+      })
+      .catch(err => {
+        console.error(err);
+        qEl.innerHTML = `<span id="error-message">読み込みエラー<br>${err.message}</span>`;
+        ansBtn.style.display = 'none'; // Hide buttons on error
+      });
+
+    function showQuestion() {
+      if (places.length === 0) {
+        qEl.textContent = '問題がありません。';
+        ansBtn.disabled = true;
+        nextBtn.style.display = 'none';
+        return;
+      }
+      const p = places[current];
+      qEl.textContent = p.name;
+      aEl.style.display = 'none';
+      aEl.textContent = ''; // Clear previous answer
+      mapEl.style.display = 'none';
+      mapEl.innerHTML = ''; // Clear previous map
+      
+      nextBtn.style.display = 'none';
+      ansBtn.style.display = 'inline-block'; // Ensure answer button is visible
+      ansBtn.disabled = false;
+    }
+
+    ansBtn.addEventListener('click', () => {
+      if (places.length === 0) return;
+      const p = places[current];
+      aEl.textContent = p.reading;
+      aEl.style.display = 'block';
+      mapEl.innerHTML = `<iframe
+        width="100%" height="100%"
+        src="https://maps.google.com/maps?q=${encodeURIComponent(p.name + ' 熊本県')}&output=embed&t=m&z=15"
+        frameborder="0" allowfullscreen loading="lazy">
+      </iframe>`;
+      mapEl.style.display = 'block';
+      
+      nextBtn.style.display = 'inline-block'; // Show next button
+      ansBtn.disabled = true;
+    });
+
+    nextBtn.addEventListener('click', () => {
+      current = (current + 1) % places.length;
+      showQuestion();
+    });
+  </script>
+</body>
+</html>

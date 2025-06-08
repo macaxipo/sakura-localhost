@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>タクシー待機場所 確認</title>
+  <style>
+    /* Basic Reset and Font Setup */
+    html {
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    *, *:before, *:after {
+      box-sizing: inherit;
+    }
+    body {
+      font-family: 'Hiragino Sans', 'ヒラギノ角ゴシック', 'Hiragino Kaku Gothic ProN', 'メイリオ', Meiryo, Osaka, 'MS PGothic', sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background-color: #f0f4f8;
+      color: #333;
+      font-size: 1rem;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Container Styling */
+    .container {
+      max-width: 500px;
+      margin: 1rem auto;
+      background-color: #ffffff;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+      display: flex;
+      flex-direction: column; /* Ensure children stack vertically */
+    }
+
+    /* Header Styling */
+    h1 {
+      font-size: 1.75rem;
+      color: #1a3b5d;
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      font-weight: 600;
+      order: 1; /* Order for flex layout */
+    }
+
+    /* Table Styling - Placed before buttons */
+    .table-wrapper {
+      overflow-x: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 1.5rem; /* Margin below table */
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      order: 2; /* Order for flex layout */
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 320px;
+      background: #fff;
+    }
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 0.8rem 1rem;
+      text-align: center;
+      font-size: 1.05rem; /* Increased font size for table cells */
+    }
+    th {
+      background-color: #edf2f7;
+      color: #2d3748;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 0.95rem; /* Header font size can be slightly smaller or same */
+    }
+    tr:nth-child(even) {
+        background-color: #f7fafc;
+    }
+    tr.today-row td {
+      font-weight: bold;
+      background-color: #ebf8ff;
+      color: #2b6cb0;
+      /* font-size will inherit from td, or can be set specifically if needed */
+    }
+    td:first-child {
+      text-align: left;
+      font-weight: 500;
+      color: #4a5568;
+      /* font-size will inherit from td */
+    }
+
+    /* Feedback Message Styling */
+    #feedbackMessage {
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem; /* Margin below feedback, before buttons */
+        border-radius: 6px;
+        font-size: 0.9rem;
+        text-align: center;
+        border: 1px solid transparent;
+        min-height: 1.2em;
+        order: 3; /* Order for flex layout */
+    }
+    #feedbackMessage.error {
+        background-color: #fed7d7;
+        color: #c53030;
+        border-color: #fc8181;
+    }
+
+    /* Taxi Number Button Controls Styling - Placed at the bottom */
+    .controls {
+      order: 4; /* Order for flex layout */
+    }
+    .controls p { /* Label for buttons */
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #4a5568;
+      margin-bottom: 0.75rem;
+      text-align: center;
+    }
+    .taxi-buttons {
+      display: flex;
+      justify-content: space-around; /* Default for mobile: distributes space */
+      gap: 0.5rem;
+    }
+    .taxi-buttons button {
+      flex-grow: 1; /* Mobile: buttons fill width */
+      padding: 0.85rem 0.5rem; /* Slightly increased padding for better tap area */
+      font-size: 1.05rem;   /* Increased button font size to match table */
+      font-weight: 600;
+      background-color: #e2e8f0;
+      color: #2d3748;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .taxi-buttons button:hover {
+      background-color: #cbd5e0;
+    }
+    .taxi-buttons button.active {
+      background-color: #2b6cb0;
+      color: #fff;
+      border-color: #2b6cb0;
+      box-shadow: 0 2px 4px rgba(43,108,176,0.3);
+    }
+    .taxi-buttons button:active:not(.active) {
+        transform: translateY(1px);
+        background-color: #cbd5e0;
+    }
+
+
+    /* Legend Styling */
+    .legend {
+      margin-top: 2rem;
+      padding: 1.25rem;
+      background-color: #edf2f7;
+      border-radius: 8px;
+      font-size: 0.9rem; /* Legend font size increased slightly */
+      line-height: 1.5;
+      border: 1px solid #e2e8f0;
+      order: 5; /* Order for flex layout, appears after controls */
+    }
+    .legend h2 {
+        font-size: 1.1rem; /* Legend title increased */
+        color: #2d3748;
+        margin-top: 0;
+        margin-bottom: 0.75rem;
+        font-weight: 600;
+    }
+    .legend ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+    }
+    .legend li {
+      margin-bottom: 0.5rem;
+      color: #4a5568;
+    }
+    .legend li::before {
+      content: "●";
+      color: #4299e1;
+      margin-right: 0.6rem;
+      font-size: 0.7em;
+      vertical-align: middle;
+    }
+
+    /* Responsive adjustments for wider screens (Tablet and up) */
+    @media (min-width: 600px) {
+      .container {
+        padding: 2rem;
+      }
+      h1 {
+        font-size: 2rem;
+      }
+      th, td {
+        font-size: 1.1rem; /* Further increase for wider screens */
+      }
+      th {
+        font-size: 1rem;
+      }
+      .controls p {
+          /* text-align: left; */ /* Label can remain centered or be left */
+      }
+      .taxi-buttons {
+        justify-content: center; /* MODIFIED: Center buttons on wider screens */
+        gap: 0.75rem;
+      }
+      .taxi-buttons button {
+        flex-grow: 0; /* Desktop: buttons take their content size + padding */
+        padding: 0.9rem 1.5rem; /* Increased padding for larger buttons */
+        font-size: 1.1rem;    /* Increased button font size */
+      }
+      .legend {
+        font-size: 0.95rem;
+      }
+      .legend h2 {
+        font-size: 1.15rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>タクシー待機場所 確認</h1>
+    <div id="calendar" class="table-wrapper">
+        </div>
+    <div id="feedbackMessage"></div>
+    <div class="controls">
+      <p>背番号を選択してください:</p>
+      <div class="taxi-buttons">
+        <button data-value="1">1</button>
+        <button data-value="2">2</button>
+        <button data-value="3">3</button>
+        <button data-value="4">4</button>
+        <button data-value="5">5</button>
+      </div>
+    </div>
+    <div class="legend">
+        <h2>凡例</h2>
+        <ul>
+            <li>ジ：銀座通り西向きジャスマック前</li>
+            <li>角：角マックと東急レイホテル前</li>
+            <li>ゆ：銀座通り東向き ゆきざき前</li>
+            <li>三：通町筋 三井住友信託銀行前</li>
+            <li>鶴：駕町通り鶴屋百貨店前</li>
+        </ul>
+    </div>
+  </div>
+
+  <script>
+    // Base date for calculation (June 3, 2025)
+    const baseDate = new Date(2025, 5, 3); // Month is 0-indexed, so 5 is June
+    // List of taxi stand locations
+    const locations = ["ジ","角","ゆ","三","鶴"];
+    // Weekday names in Japanese
+    const weekdays = ['日','月','火','水','木','金','土'];
+    // Labels for relative dates
+    const labels = ['昨日','今日','明日','明後日','明々後日'];
+
+    const feedbackElement = document.getElementById('feedbackMessage');
+    const taxiButtonsContainer = document.querySelector('.taxi-buttons');
+    const taxiButtons = taxiButtonsContainer.querySelectorAll('button');
+    let currentTaxiNum = 1; // Default taxi number
+
+    // Load last used taxi number from localStorage and set active button
+    const savedTaxiNum = localStorage.getItem('lastTaxiNum');
+    if (savedTaxiNum && !isNaN(savedTaxiNum)) {
+      const num = parseInt(savedTaxiNum, 10);
+      if (num >= 1 && num <= 5) {
+        currentTaxiNum = num;
+      }
+    }
+
+    function setActiveButton(selectedNum) {
+      taxiButtons.forEach(button => {
+        if (parseInt(button.dataset.value) === selectedNum) {
+          button.classList.add('active');
+        } else {
+          button.classList.remove('active');
+        }
+      });
+    }
+
+    // Function to calculate the difference in days between two dates
+    function diffDays(d1, d2) {
+      const t2 = d2.getTime();
+      const t1 = d1.getTime();
+      return Math.floor((t1 - t2) / (24 * 3600 * 1000)); // milliseconds in a day
+    }
+    
+    // Function to generate and display the taxi stand calendar
+    function generateCalendar(taxiNum) {
+      // Validate taxiNum (should always be valid if coming from buttons)
+      if (isNaN(taxiNum) || taxiNum < 1 || taxiNum > 5) {
+        console.error('無効な背番号:', taxiNum);
+        feedbackElement.textContent = 'エラー: 有効な背番号を選択してください。';
+        feedbackElement.className = 'error';
+        document.getElementById('calendar').innerHTML = '<table><thead><tr><th>日付 (区分)</th><th>待機場所</th></tr></thead><tbody><tr><td colspan="2" style="text-align:center; padding: 20px; color: #777;">データを表示するには有効な背番号を選択してください。</td></tr></tbody></table>';
+        setTimeout(() => {
+            feedbackElement.textContent = '';
+            feedbackElement.className = '';
+        }, 4000);
+        return;
+      }
+      localStorage.setItem('lastTaxiNum', taxiNum); // Save the valid number
+
+      feedbackElement.textContent = ''; // Clear any previous error message
+      feedbackElement.className = '';
+
+      const today = new Date();
+      today.setHours(0,0,0,0); // Normalize today
+
+      let tableHtml = '<table><thead><tr><th>日付 (区分)</th><th>待機場所</th></tr></thead><tbody>';
+      
+      [-1, 0, 1, 2, 3].forEach((offset, i) => {
+        const currentDate = new Date(today);
+        currentDate.setDate(today.getDate() + offset);
+        
+        const dayDifference = diffDays(currentDate, baseDate);
+        const locationIndexBase = ((dayDifference % locations.length) + locations.length) % locations.length;
+        const place = locations[((locationIndexBase - (taxiNum - 1)) % locations.length + locations.length) % locations.length];
+        
+        const m = currentDate.getMonth() + 1;
+        const d = currentDate.getDate();
+        const w = weekdays[currentDate.getDay()];
+        const label = labels[i];
+        const rowClass = (label === '今日') ? ' class="today-row"' : '';
+        
+        tableHtml += `<tr${rowClass}><td>${m}月${d}日（${w}） ${label}</td><td>${place}</td></tr>`;
+      });
+      
+      tableHtml += '</tbody></table>';
+      document.getElementById('calendar').innerHTML = tableHtml;
+    }
+
+    // Event listener for taxi number buttons
+    taxiButtonsContainer.addEventListener('click', (event) => {
+      if (event.target.tagName === 'BUTTON') {
+        const selectedNum = parseInt(event.target.dataset.value);
+        if (!isNaN(selectedNum)) {
+          currentTaxiNum = selectedNum;
+          setActiveButton(currentTaxiNum);
+          generateCalendar(currentTaxiNum);
+        }
+      }
+    });
+    
+    // Initial setup on page load
+    setActiveButton(currentTaxiNum);
+    generateCalendar(currentTaxiNum);
+
+  </script>
+</body>
+</html>

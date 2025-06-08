@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>GPX Tachograph & Trajectory</title>
+  <!-- Chart.js for 折れ線グラフ -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <!-- Leaflet.js for Map -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+  />
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <style>
+    html { font-size: 16px; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background-color: #f4f7f6;
+      color: #333;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      color: #005bac; /* A calm blue */
+      margin-top: 1.5rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    h1 { font-size: 1.8rem; text-align: center; }
+    h2 { font-size: 1.5rem; }
+    p { margin-bottom: 1rem; font-size: 0.95rem; }
+
+    #gpxInput {
+      display: block;
+      width: 100%;
+      max-width: 480px;
+      margin: 1.5rem auto;
+      padding: 0.8rem;
+      font-size: 1rem;
+      border: 2px dashed #007bff;
+      border-radius: 8px;
+      background-color: #fff;
+      cursor: pointer;
+      text-align: center;
+    }
+    #gpxInput:hover {
+      background-color: #e9f5ff;
+    }
+
+    #map {
+      height: 350px; /* Adjusted height for mobile */
+      margin-top: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    canvas#speedChart {
+      max-width: 100%;
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 0.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-top: 1rem;
+    }
+
+    .analysis-table {
+      width: 100%;
+      max-width: 500px; /* Slightly wider for better spacing */
+      margin: 1.5rem auto;
+      border-collapse: collapse;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      border-radius: 8px;
+      overflow: hidden; /* For rounded corners on table */
+    }
+    .analysis-table th,
+    .analysis-table td {
+      padding: 0.8rem 1rem;
+      border: 1px solid #e0e0e0;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+    .analysis-table th {
+      background-color: #005bac; /* Theme color */
+      color: #fff;
+      width: 45%; /* Adjusted width */
+    }
+    .analysis-table td {
+      background-color: #fff;
+      font-weight: 500;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+      body { padding: 0.8rem; }
+      h1 { font-size: 1.6rem; }
+      h2 { font-size: 1.3rem; }
+      #map { height: 300px; }
+      .analysis-table th,
+      .analysis-table td {
+        font-size: 0.9rem;
+        padding: 0.6rem 0.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>GPX ログ可視化</h1>
+  <p>GPX ファイルを選択して、タコグラフ（速度–時間）と走行軌跡マップを表示します。</p>
+  <input type="file" id="gpxInput" accept=".gpx"><br>
+
+  <table class="analysis-table">
+    <tr>
+      <th>総走行距離 (km)</th>
+      <td id="totalDistance">--.--</td>
+    </tr>
+    <tr>
+      <th>移動時間 (hh:mm)</th>
+      <td id="movingTime">--:--</td>
+    </tr>
+    <tr>
+      <th>平均速度 (km/h)</th>
+      <td id="avgSpeed">--.--</td>
+    </tr>
+    <tr>
+      <th>最高速度 (km/h)</th>
+      <td id="maxSpeed">--.--</td>
+    </tr>
+  </table>
+
+  <h2>タコグラフ（速度–時間）</h2>
+  <canvas id="speedChart"></canvas>
+
+  <h2>走行軌跡マップ</h2>
+  <div id="map"></div>
+
+  <script>
+  // GPS 距離計算（km）
+  function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371.0;
+    const toRad = d=>d*Math.PI/180;
+    const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
+    const a = Math.sin(dLat/2)**2 +
+              Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  let chartInstance = null; // To keep track of the chart
+
+  document.getElementById('gpxInput').addEventListener('change', e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      const text = evt.target.result;
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(text, 'application/xml');
+      const trkpts = xml.querySelectorAll('trkpt');
+      const points = [];
+      let prev = null;
+      trkpts.forEach(node=>{
+        const lat = parseFloat(node.getAttribute('lat'));
+        const lon = parseFloat(node.getAttribute('lon'));
+        const tNode = node.querySelector('time');
+        if(!tNode) return;
+        const time = new Date(tNode.textContent);
+        let speed = null;
+        const sNode = node.querySelector('speed');
+        if(sNode) {
+          speed = parseFloat(sNode.textContent) * 3.6; // m/s to km/h
+        } else if(prev) {
+          const dt = (time - prev.time)/1000; // sec
+          if(dt>0) {
+            const dist = haversine(prev.lat, prev.lon, lat, lon); // km
+            speed = dist/(dt/3600); // km/h
+          }
+        }
+        points.push({time, lat, lon, speed: speed !== null ? Math.max(0, speed) : 0}); // Ensure speed is non-null and >= 0
+        prev = {time, lat, lon};
+      });
+
+      if (points.length === 0) {
+        alert('GPXファイルに有効なトラックポイントが見つかりませんでした。');
+        return;
+      }
+
+      // 走行データ分析値計算・表示
+      let totalDist = 0;
+      for (let i = 1; i < points.length; i++) {
+        totalDist += haversine(
+          points[i-1].lat, points[i-1].lon,
+          points[i].lat,   points[i].lon
+        );
+      }
+      document.getElementById('totalDistance').textContent = totalDist.toFixed(2);
+
+      let movingSec = 0;
+      for (let i = 1; i < points.length; i++) {
+        // Speed threshold for moving, e.g., 1 km/h. Consider points[i] or average of points[i-1] and points[i]
+        if (points[i].speed >= 1 && points[i-1].speed >=1) { // Using 1km/h as threshold
+          movingSec += (points[i].time - points[i-1].time) / 1000;
+        }
+      }
+      const hh = Math.floor(movingSec/3600);
+      const mm = Math.floor((movingSec%3600)/60);
+      document.getElementById('movingTime').textContent =
+        `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+
+      const avg = movingSec > 0 ? totalDist / (movingSec/3600) : 0;
+      document.getElementById('avgSpeed').textContent = avg.toFixed(2);
+
+      const maxSp = points.length > 0 ? Math.max(...points.map(p=>p.speed)) : 0;
+      document.getElementById('maxSpeed').textContent = maxSp.toFixed(2);
+
+      // 折れ線グラフ描画
+      const times = points.map(p=>p.time.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit'}));
+      const speeds = points.map(p=>parseFloat(p.speed.toFixed(1)));
+      const ctx = document.getElementById('speedChart').getContext('2d');
+
+      if(chartInstance) {
+        chartInstance.destroy(); // Destroy previous chart if exists
+      }
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: times,
+          datasets: [{
+            label: '速度 (km/h)',
+            data: speeds,
+            borderColor: '#007bff', // Bootstrap primary blue
+            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            tension: 0.3,
+            pointRadius: 1,
+            pointHitRadius: 10,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { display: true, title: {display:true, text:'時刻'} },
+            y: { display: true, title: {display:true, text:'速度 (km/h)'}, beginAtZero:true }
+          },
+          plugins: {
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+            }
+          }
+        }
+      });
+
+      // Leaflet 地図描画
+      // Clear previous map instance if exists
+      const mapContainer = document.getElementById('map');
+      if (mapContainer._leaflet_id) { // Check if Leaflet has already initialized this container
+        // A more robust way to remove a map:
+        // 1. Get the map instance if you stored it, e.g., `if (myMapInstance) myMapInstance.remove();`
+        // 2. Or, clear the container and let Leaflet re-initialize.
+        //    This might not always be clean if Leaflet stores global state related to the ID.
+        //    For simplicity here, we'll clear and re-init.
+        mapContainer.innerHTML = ""; // Clear previous map's DOM elements
+        // Leaflet might still hold a reference to the old map instance internally if not properly removed.
+        // A common pattern is to store the map instance `let map = L.map(...)` and then call `map.remove()`
+      }
+      
+      let map; // Declare map variable to potentially store and remove later if needed.
+      // If you are re-running this code block (e.g. new file upload), you'd do:
+      // if (window.currentMap) { window.currentMap.remove(); }
+
+      map = L.map('map').setView([points[0].lat, points[0].lon], 13);
+      // window.currentMap = map; // Store globally if you need to access it for removal
+
+      L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { attribution: '© OpenStreetMap contributors' }
+      ).addTo(map);
+      const latlngs = points.map(p=>[p.lat, p.lon]);
+      L.polyline(latlngs, {color:'#28a745', weight: 5}).addTo(map); // Green, thicker line
+
+      // Start and End markers
+      if (points.length > 0) {
+        L.marker(latlngs[0], {title: "スタート"}).addTo(map).bindPopup("スタート地点");
+        if (latlngs.length > 1) { // Ensure there's an end point different from start
+            L.marker(latlngs[latlngs.length-1], {title: "ゴール"}).addTo(map).bindPopup("ゴール地点");
+        }
+      }
+      
+      // 参照点表示（例：新町交差点）
+      // const refLat = 32.8037185, refLon = 130.6988443;
+      // L.circleMarker([refLat, refLon], {
+      //   radius: 6, color:'red', fillColor:'red', fillOpacity:0.8
+      // }).addTo(map).bindPopup('基準点');
+
+      if (latlngs.length > 0) {
+        map.fitBounds(latlngs);
+      }
+    };
+    reader.readAsText(file);
+  });
+  </script>
+</body>
+</html>
