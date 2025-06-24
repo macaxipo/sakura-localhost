@@ -1,0 +1,470 @@
+<!-- shift_ics_generator.html (v20 - Added Instructions) | ICS: omit公休 events -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>勤務待機カレンダー & ICS 生成</title>
+  <style>
+    :root {
+      --primary-color: #38bdf8;
+      --primary-hover: #0ea5e9;
+      --night-color: #1e3a8a;
+      --night-bg: #eef2ff;
+      --gray-bg: #f3f4f6;
+      --card-bg: #ffffff;
+      --text-color: #1f2937;
+      --text-light: #4b5563;
+      --border-color: #e5e7eb;
+      --work-day-bg: #d9f99d;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: var(--gray-bg);
+      color: var(--text-color);
+      line-height: 1.2;
+      margin: 0;
+    }
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+    p {
+      color: var(--text-light);
+      text-align: center;
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+    h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-top: 0;
+      margin-bottom: 1rem;
+      color: var(--text-color);
+      border-left: 4px solid var(--primary-color);
+      padding-left: 0.75rem;
+    }
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+    }
+    /* --- Buttons --- */
+    .btn-grid {
+      display: grid;
+      gap: 0.75rem;
+    }
+    .taxi-group {
+      grid-template-columns: repeat(5, 1fr);
+    }
+    .team-group {
+      grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+    }
+    .team-btn, .taxi-btn {
+      cursor: pointer;
+      padding: 0.75rem 0.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 0.375rem;
+      transition: all .2s;
+      border: 1px solid;
+      user-select: none;
+      text-align: center;
+    }
+    .day-btn {
+      border-color: var(--primary-color);
+      background: #f0f9ff;
+      color: var(--primary-color);
+    }
+    .day-btn.active {
+      background: var(--primary-color);
+      color: #fff;
+    }
+    .night-btn {
+      border-color: var(--night-color);
+      background: var(--night-bg);
+      color: var(--night-color);
+    }
+    .night-btn.active {
+      background: var(--night-color);
+      color: #fff;
+    }
+    .taxi-btn {
+      border-color: #9ca3af;
+      background: #f9fafb;
+      color: #374151;
+    }
+    .taxi-btn.active {
+      background: #4b5563;
+      color: #fff;
+      border-color: #4b5563;
+    }
+    /* --- ICS Generation --- */
+    .generate-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .btn-primary {
+      background: var(--primary-color);
+      color: #fff;
+      cursor: pointer;
+      border: none;
+      padding: .75rem 1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: .375rem;
+      transition: background .2s;
+      width: 100%;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    a.download-link {
+      display: none;
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      text-align: center;
+      text-decoration: none;
+      border-radius: .375rem;
+      background-color: #d1fae5;
+      color: #065f46;
+      transition: background-color .2s;
+    }
+    a.download-link:hover {
+      background-color: #a7f3d0;
+    }
+    /* --- Calendar Preview --- */
+    #previewContainer {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+    .month-block {
+      background-color: var(--card-bg);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+    }
+    .month-title {
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 0.75rem;
+      font-size: 1.1rem;
+    }
+    table.calendar {
+      border-collapse: collapse;
+      width: 100%;
+      table-layout: fixed;
+    }
+    table.calendar th {
+      font-size: 0.8rem;
+      padding: .4rem 0;
+      font-weight: 600;
+      color: var(--text-light);
+      border-bottom: 2px solid var(--border-color);
+    }
+    table.calendar th.sun {
+      color: #ef4444;
+    }
+    table.calendar td {
+      text-align: center;
+      padding: .4rem 0;
+      border: 1px solid var(--border-color);
+      font-size: .9rem;
+      vertical-align: middle;
+    }
+    table.calendar tr:first-child td { border-top: none; }
+    table.calendar td:first-child { border-left: none; }
+    table.calendar td:last-child { border-right: none; }
+    table.calendar tr:last-child td { border-bottom: none; }
+    table.calendar td.empty {
+      background: #f9fafb;
+      color: #d1d5db;
+    }
+    .shift-info {
+      font-weight: 600;
+      display: block;
+      font-size: 0.9em;
+    }
+    table.calendar td.holiday .shift-info {
+      color: var(--text-light);
+    }
+    table.calendar td.work-day {
+      background-color: var(--work-day-bg);
+      color: var(--text-color);
+    }
+
+    /* --- 【CSS変更点】説明文のスタイル --- */
+    #instructions {
+      display: none; /* 初期状態は非表示 */
+      margin-top: 1.5rem;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1rem;
+    }
+    #instructions details {
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem;
+      background-color: #f9fafb;
+    }
+    #instructions summary {
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0.5rem 0;
+    }
+    #instructions summary::marker,
+    #instructions summary::-webkit-details-marker {
+        color: var(--primary-color);
+    }
+    .instructions-content {
+      padding-top: 1rem;
+      line-height: 1.6;
+    }
+    .instructions-content ol {
+      padding-left: 1.5rem;
+      margin-top: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .instructions-content li {
+      margin-bottom: 0.5rem;
+    }
+    .instructions-content a {
+      color: var(--primary-hover);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .instructions-content a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>勤務待機カレンダー</h1>
+    <p>下のボタンで背番号とチームを選択すると、カレンダーに予定が表示されます。既にGoogleカレンダーをお使いの方は新規にカレンダーを作成し、そのカレンダーにファイルをインポートしてください!!</p>
+
+    <!-- Calendar Preview Area -->
+    <h2 style="text-align: center; border: none; padding-left: 0; font-size: 1.25rem; margin-top: 1.5rem; margin-bottom: 1.5rem;">カレンダープレビュー</h2>
+    <div id="previewContainer"></div>
+
+    <!-- Selection Cards -->
+    <div class="card">
+      <h2>1. 背番号を選択</h2>
+      <div class="btn-grid taxi-group">
+        <button class="taxi-btn" data-num="1">1</button>
+        <button class="taxi-btn" data-num="2">2</button>
+        <button class="taxi-btn" data-num="3">3</button>
+        <button class="taxi-btn" data-num="4">4</button>
+        <button class="taxi-btn" data-num="5">5</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. チームを選択</h2>
+      <strong style="display: block; margin-bottom: 0.5rem; font-weight:600;">昼チーム</strong>
+      <div class="btn-grid team-group">
+        <button class="team-btn day-btn" data-team="A">A</button>
+        <button class="team-btn day-btn" data-team="B">B</button>
+        <button class="team-btn day-btn" data-team="C">C</button>
+        <button class="team-btn day-btn" data-team="D">D</button>
+      </div>
+       <strong style="display: block; margin-top: 1rem; margin-bottom: 0.5rem; font-weight:600;">夜チーム</strong>
+      <div class="btn-grid team-group">
+        <button class="team-btn night-btn" data-team="X">X</button>
+        <button class="team-btn night-btn" data-team="Y">Y</button>
+        <button class="team-btn night-btn" data-team="Z">Z</button>
+      </div>
+    </div>
+
+    <!-- ICS Generation Card -->
+    <div class="card">
+      <h2>3. ICSカレンダーを生成</h2>
+      <p style="font-size: 0.9rem; margin-bottom: 1rem; color: var(--text-light);">
+        背番号とチームを選択後、ボタンを押すとICSファイルが生成されます。Googleカレンダーをすでに利用の方は新たにカレンダーを作成しそこにファイルをインポートしてください!!
+      </p>
+      <div class="generate-group">
+        <button class="btn-primary generate-ics" data-months="7">ICS 生成（7か月分）</button>
+        <button class="btn-primary generate-ics" data-months="13">ICS 生成（13か月分）</button>
+      </div>
+      <a id="downloadLink" class="download-link"></a>
+      
+      <!-- 【HTML変更点】説明文の追加 -->
+      <div id="instructions">
+        <details open>
+          <summary>Googleカレンダーへの登録方法</summary>
+          <div class="instructions-content">
+            <p style="text-align:left; font-weight:600;">【推奨】パソコンでの操作</p>
+            <ol>
+              <li>このページで「ICS生成」ボタンを押し、ファイルをダウンロードします。</li>
+              <li>パソコンで<a href="https://calendar.google.com/" target="_blank" rel="noopener noreferrer">Googleカレンダー</a>を開きます。</li>
+              <li>右上の歯車アイコン<strong style="font-size:1.2em;">⚙</strong>から「設定」をクリックします。</li>
+              <li>左のメニューで「カレンダーを追加」→「インポート」を選択します。</li>
+              <li>「パソコンからファイルを選択」で、ダウンロードしたICSファイルを選びます。</li>
+              <li>「カレンダーに追加」で登録したいカレンダー（通常はご自身の名前）を選び、「インポート」ボタンを押して完了です。</li>
+            </ol>
+            <p style="text-align:left; font-weight:600;">スマートフォンでの操作</p>
+            <p style="text-align:left; font-size:0.9rem;">スマホから直接登録できない場合があるため、パソコンでの操作が確実です。</p>
+            <ol>
+              <li>このページで「ICS生成」ボタンを押し、ファイルをダウンロードします。</li>
+              <li>Gmailなどのメールアプリで、ダウンロードしたファイルを添付して<strong>自分宛てにメールを送信</strong>します。</li>
+              <li>スマホで受信したメールを開き、添付されているICSファイルをタップします。</li>
+              <li>「カレンダーに追加」などの画面が表示されたら、指示に従って登録します。</li>
+            </ol>
+          </div>
+        </details>
+      </div>
+    </div>
+
+  </div><!-- /.container -->
+
+<script>
+(()=>{
+  // JavaScript部分はほぼ変更なし
+  const MS_DAY=86400000;
+  const LOCATIONS=['ジ','角','ゆ','三','鶴'];
+  const BASE_DATE=new Date(Date.UTC(2025,5,3));
+  const DAY_OFFSETS=[0,5,6,10,11,16,19,22,27];
+  const DAY_SHIFT={D:0,C:-7,B:-14,A:-21};
+  const NIGHT_OFFSETS=[0,1,7,11,16,17];
+  const NIGHT_SHIFT={X:0,Y:-7,Z:-14};
+  const NIGHT_ANCHOR_SUNDAY=new Date(Date.UTC(2025,5,8));
+
+  let selectedTaxi = null, selectedTeam = null;
+
+  const pad=n=>String(n).padStart(2,'0');
+  const toIcsDate=d=>`${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}`;
+  const diffDays=(d1,d2)=>Math.floor((d1-d2)/MS_DAY);
+  const getLocation=(d,t)=>{const diff=diffDays(d,BASE_DATE);const base=((diff%LOCATIONS.length)+LOCATIONS.length)%LOCATIONS.length;const idx=((base-(t-1))%LOCATIONS.length+LOCATIONS.length)%LOCATIONS.length;return LOCATIONS[idx];};
+  const getDayBaseMonday=()=>{const t=new Date();const m=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth(),t.getUTCDate()));const off=(1-m.getUTCDay()+7)%7;m.setUTCDate(m.getUTCDate()+off);return m;};
+  const getNightBaseSunday=()=>{const t=new Date();const diff=Math.floor((t-NIGHT_ANCHOR_SUNDAY)/MS_DAY);const cyc=Math.floor(diff/21);const b=new Date(NIGHT_ANCHOR_SUNDAY);b.setUTCDate(b.getUTCDate()+cyc*21);return b;};
+  const genDays=(offs,len,start,s,e)=>{const days=[];const first=new Date(start);while(first<s)first.setUTCDate(first.getUTCDate()+len);first.setUTCDate(first.getUTCDate()-len);for(let cs=new Date(first);cs<=e;cs.setUTCDate(cs.getUTCDate()+len)){offs.forEach(o=>{const d=new Date(cs);d.setUTCDate(d.getUTCDate()+o);if(d>=s&&d<=e)days.push(new Date(d));});}return days;};
+  const getInfo=t=>DAY_SHIFT[t]!==undefined?{offs:DAY_OFFSETS,len:28,start:new Date(getDayBaseMonday().getTime()+DAY_SHIFT[t]*MS_DAY)}:{offs:NIGHT_OFFSETS,len:21,start:new Date(getNightBaseSunday().getTime()+NIGHT_SHIFT[t]*MS_DAY)};
+
+  const monthHTML=(y,m,hol)=>{
+      const f=new Date(Date.UTC(y,m,1));
+      const l=new Date(Date.UTC(y,m+1,0));
+      let c=new Date(f);
+      c.setUTCDate(c.getUTCDate()-c.getUTCDay());
+      let h=`<div class="month-block"><div class="month-title">${y}年 ${m+1}月</div><table class="calendar"><thead><tr>`+['日','月','火','水','木','金','土'].map(d => `<th${d === '日' ? ' class="sun"' : ''}>${d}</th>`).join('')+'</tr></thead><tbody>';
+      while(c<=l||c.getUTCDay()!==0){
+          h+='<tr>';
+          for(let i=0;i<7;i++){
+              let cls = '';
+              let content = c.getUTCDate();
+              let shiftInfo = '';
+              if(c.getUTCMonth()!==m){
+                  cls='empty';
+              } else {
+                  const k=c.toISOString().split('T')[0];
+                  if(hol.has(k)){
+                      cls='holiday';
+                      shiftInfo = '<span class="shift-info">公休</span>';
+                  } else if(selectedTaxi){
+                      cls='work-day';
+                      const loc = getLocation(c, selectedTaxi);
+                      shiftInfo = `<span class="shift-info">${loc}</span>`;
+                  }
+              }
+              h+=`<td class="${cls}">${content}${shiftInfo}</td>`;
+              c.setUTCDate(c.getUTCDate()+1);
+          }
+          h+='</tr>';
+      }
+      return h+='</tbody></table></div>';
+  };
+
+  const preview=()=>{
+    const info = selectedTeam ? getInfo(selectedTeam) : null;
+    const t = new Date();
+    const s = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1));
+    const e = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 2, 0));
+    const hols = info ? genDays(info.offs, info.len, info.start, s, e) : [];
+    const holSet = new Set(hols.map(d=>d.toISOString().split('T')[0]));
+    let h='';[0,1].forEach(m=>{const y=t.getUTCFullYear()+Math.floor((t.getUTCMonth()+m)/12);const mo=(t.getUTCMonth()+m)%12;h+=monthHTML(y,mo,holSet);});
+    document.getElementById('previewContainer').innerHTML=h;
+    document.getElementById('downloadLink').style.display = 'none';
+    document.getElementById('instructions').style.display = 'none'; // 選択変更時に説明も隠す
+  };
+
+  const setAct=(sel,el)=>{document.querySelectorAll(sel).forEach(e=>e.classList.remove('active'));el.classList.add('active');};
+
+  const handleTeamSelection=(btn)=>{
+    if (btn.classList.contains('active')) {
+      btn.classList.remove('active');
+      selectedTeam = null;
+    } else {
+      selectedTeam=btn.dataset.team;
+      const isDayTeam=btn.classList.contains('day-btn');
+      const daySelector='[data-team].day-btn';
+      const nightSelector='[data-team].night-btn';
+      setAct(isDayTeam?daySelector:nightSelector,btn);
+      document.querySelectorAll(isDayTeam?nightSelector:daySelector).forEach(b=>b.classList.remove('active'));
+    }
+    preview();
+  };
+
+  document.querySelectorAll('.taxi-btn').forEach(b=>b.addEventListener('click',()=>{
+    if (b.classList.contains('active')) {
+      b.classList.remove('active');
+      selectedTaxi = null;
+    } else {
+      selectedTaxi=parseInt(b.dataset.num);
+      setAct('.taxi-btn',b);
+    }
+    preview();
+  }));
+
+  document.querySelectorAll('[data-team]').forEach(b=>b.addEventListener('click',()=>handleTeamSelection(b)));
+
+  document.querySelectorAll('.generate-ics').forEach(b=>b.addEventListener('click',()=>{
+    if (!selectedTaxi || !selectedTeam) {
+      alert('先に「1. 背番号」と「2. チーム」の両方を選択してください。');
+      return;
+    }
+    const months=parseInt(b.dataset.months);
+    const info=getInfo(selectedTeam);
+    const t=new Date();
+    const rs=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth(),1));
+    const re=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth()+months,0));
+    const hols=genDays(info.offs,info.len,info.start,rs,re);
+    const holSet=new Set(hols.map(d=>d.toISOString().split('T')[0]));
+    const lines=['BEGIN:VCALENDAR','VERSION:2.0','CALSCALE:GREGORIAN','METHOD:PUBLISH','PRODID:-//ktaxi.work duty generator//JA'];
+    for(let d=new Date(rs);d<=re;d.setUTCDate(d.getUTCDate()+1)){
+      const k=d.toISOString().split('T')[0];
+      if(holSet.has(k)) continue;
+      const loc=getLocation(d,selectedTaxi);
+      const dtS=toIcsDate(d);
+      const dtE=toIcsDate(new Date(d.getTime()+MS_DAY));
+      lines.push('BEGIN:VEVENT',`DTSTART;VALUE=DATE:${dtS}`,`DTEND;VALUE=DATE:${dtE}`,`SUMMARY:待機 (${loc})`,`LOCATION:${loc}`,'TRANSP:OPAQUE','END:VEVENT');
+    }
+    lines.push('END:VCALENDAR');
+    const blob=new Blob([lines.join('\r\n')],{type:'text/calendar;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const link=document.getElementById('downloadLink');
+    link.href=url;
+    link.download=`taxi_${selectedTaxi}_${selectedTeam}_${months}m.ics`;
+    link.style.display='block';
+    link.textContent=`✓ ${selectedTaxi}号車-${selectedTeam}チーム (${months}か月分) ダウンロード`;
+
+    // --- 【JavaScript変更点】ダウンロードリンクと同時に説明を表示 ---
+    document.getElementById('instructions').style.display = 'block';
+  }));
+
+  preview();
+})();
+</script>
+</body>
+</html>
