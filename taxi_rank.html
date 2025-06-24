@@ -82,15 +82,14 @@
     }
     tr.today-row td {
       font-weight: bold;
-      background-color: #ebf8ff;
-      color: #2b6cb0;
-      /* font-size will inherit from td, or can be set specifically if needed */
+      background-color: #f1f8e9; /* MODIFIED: Light green background */
+      color: #558b2f;           /* MODIFIED: Dark green text */
+      font-size: 1.2em;
     }
     td:first-child {
       text-align: left;
       font-weight: 500;
       color: #4a5568;
-      /* font-size will inherit from td */
     }
 
     /* Feedback Message Styling */
@@ -143,10 +142,10 @@
       background-color: #cbd5e0;
     }
     .taxi-buttons button.active {
-      background-color: #2b6cb0;
+      background-color: #8bc34a; /* MODIFIED: Green background */
       color: #fff;
-      border-color: #2b6cb0;
-      box-shadow: 0 2px 4px rgba(43,108,176,0.3);
+      border-color: #8bc34a;     /* MODIFIED: Green border */
+      box-shadow: 0 2px 4px rgba(139, 195, 74, 0.3); /* MODIFIED: Green shadow */
     }
     .taxi-buttons button:active:not(.active) {
         transform: translateY(1px);
@@ -183,7 +182,7 @@
     }
     .legend li::before {
       content: "●";
-      color: #4299e1;
+      color: #8bc34a; /* MODIFIED: Green marker */
       margin-right: 0.6rem;
       font-size: 0.7em;
       vertical-align: middle;
