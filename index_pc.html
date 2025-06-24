@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>熊本コンテンツまとめ</title>
+  <style>
+    html { font-size: 18px; /* Base font size for better rem calculation */ }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 1.5rem 1rem;
+      background: #f0f2f5; /* Light grey background for a softer look */
+      color: #333;
+      font-size: 1rem; /* 16px */
+      line-height: 1.6;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      font-size: 2rem; /* Larger H1 */
+      color: #1d3557; /* Dark blue */
+    }
+
+    .nav-list, .music-list {
+      list-style: none;
+      padding: 0;
+      max-width: 768px; /* Slightly wider for comfort */
+      margin: 0 auto 2rem auto;
+    }
+    .nav-list li, .music-list li {
+      margin: 1rem 0;
+    }
+    .nav-list a, .music-list a {
+      display: block;
+      padding: 1rem 1.2rem;
+      background: #fff;
+      color: #005bac; /* Consistent link color */
+      text-decoration: none;
+      border-radius: 10px; /* Softer corners */
+      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+      font-size: 1.15rem; /* Slightly larger font for links */
+      font-weight: 500;
+      transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+      border-left: 5px solid #007bff; /* Accent border */
+    }
+    .nav-list a:hover, .music-list a:hover {
+      background: #e9f5ff; /* Light blue hover */
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+
+    /* Section styling */
+    .section {
+      background: #ffffff;
+      padding: 1.5rem;
+      margin: 2rem auto;
+      max-width: 768px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    }
+    .section h2 {
+      text-align: center;
+      font-size: 1.5rem; /* Slightly larger section titles */
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      color: #1d3557; /* Dark blue */
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    details {
+      max-width: 768px;
+      margin: 1.5rem auto;
+      font-size: 0.95rem;
+      background: #f9f9f9; /* Slightly different background for details */
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    }
+    details summary {
+      font-weight: 500;
+      color: #005bac;
+      cursor: pointer;
+    }
+    details pre {
+      margin-top: 0.8rem;
+      padding: 0.8rem;
+      background: #fff;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .gpx-section img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      margin-top: 1rem;
+      display: block; /* Center image if section is text-align: center */
+    }
+
+    /* Footer or attribution (optional) */
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      font-size: 0.9rem;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <h1>熊本コンテンツまとめ</h1>
+  <ul class="nav-list">
+    <li><a href="kumamoto_quiz.html">熊本 難読地名クイズ</a></li>
+    <li><a href="taxi_rank.html">タクシー待機場所</a></li>
+    <li><a href="gpx_viewer.html">GPXログビューワー</a></li>
+    <li><a href="https://weather.yahoo.co.jp/weather/jp/43/8610/43101.html" target="_blank" rel="noopener">Yahoo!天気・災害 熊本市中央区</a></li>
+    <li><a href="https://www.pref.kumamoto.jp/site/police/list20-90.html" target="_blank" rel="noopener">熊本県警 交通取締情報一覧</a></li>
+    <li><a href="https://colab.research.google.com/drive/10WPo_u5Zu2zs8QqMbWqkeb6m0M8QzyNK?usp=sharing" target="_blank" rel="noopener">音楽生成ページ (Google Colab)</a></li>
+    <li><a href="https://www.youtube.com/watch?v=t1pb-8sUHuY" target="_blank" rel="noopener">大甲橋 ライブカメラ（熊本市・日教社模型店）</a></li>
+    <li><a href="https://www.youtube.com/watch?v=JC0_aImeb6o" target="_blank" rel="noopener">サクラマチ熊本方面 ライブカメラ（RKK放送）</a></li>
+    <li><a href="https://www.youtube.com/watch?v=NuesgN-rJBw" target="_blank" rel="noopener">熊本駅前 ライブカメラ（KAB朝日放送）</a></li>
+  </ul>
+
+  <div class="section music-section">
+    <h2>🔊 音量注意：タクシー運転手の哀愁 3トラック試聴</h2>
+    <ul class="music-list">
+      <li><a href="output_20250508195226_0.wav" target="_blank" rel="noopener">Taxi Driver Blues ver.A (19:52)</a></li>
+      <li><a href="output_20250508194206_0.wav" target="_blank" rel="noopener">Taxi Driver Blues ver.B (19:42)</a></li>
+      <li><a href="output_20250508191427_0.wav" target="_blank" rel="noopener">Taxi Driver Blues ver.C (19:14)</a></li>
+    </ul>
+    <details>
+      <summary>歌詞を表示</summary>
+      <pre>
+[verse]
+雨んしぶきば受けながら　くわみず川沿い走りよる
+メーターの灯りが　心ば照らすばってん
+バックミラーに映る　アミュプラザのネオン
+夢んかけらは　まだ後部座席で眠っとる
+
+[verse]
+水前寺公園の夜風が　ええくらうほど冷たか
+銀座通りの客待ち　やおいかん時間ばね
+「どぎゃんね？」と無線が鳴って　ちけぇけん行くばい
+熊本城の影が　オレば見送るしよる
+
+[chorus]
+走り続けるタクシー　哀愁ば積んで
+誰の涙も　シートに染みとるばってん
+星の少なか空でも　道は光るけん
+ハンドル握りしめ　夜ば越えて行く
+
+[bridge]
+ワイパーのリズムが　心拍と重なって
+明日ん行き先ば　ナビは教えてくれん
+それでも走らにゃ　止まれば終わるけん
+街の息づかいと　今も一緒に歌いよる
+      </pre>
+    </details>
+  </div>
+
+  <div class="section gpx-section">
+    <h2>只今GPSログアプリ作成中！！</h2>
+    <img src="Screenshot_20250509-014721.png" alt="GPSログアプリ スクリーンショット">
+  </div>
+
+  <footer>
+    <p>© 2024 熊本コンテンツ</p>
+  </footer>
+</body>
+</html>
